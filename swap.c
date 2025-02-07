@@ -22,7 +22,8 @@ struct args {
     int				delay;			  // delay between operations
     int				iterations;
     struct buffer	*buffer;		  // Shared buffer
-    pthread_mutex_t *mutex;
+    pthread_mutex_t *mutex1;
+    pthread_mutex_t *mutex2;
 };
 
 void *swap(void *ptr)
@@ -33,8 +34,6 @@ void *swap(void *ptr)
         int i,j, tmp;
         i=rand() % args->buffer->size;
         j=rand() % args->buffer->size;
-
-        pthread_mutex_lock(args->mutex);
 
         printf("Thread %d swapping positions %d (== %d) and %d (== %d)\n",
             args->thread_num, i, args->buffer->data[i], j, args->buffer->data[j]);
@@ -49,7 +48,6 @@ void *swap(void *ptr)
         if(args->delay) usleep(args->delay);
         inc_count();
 
-        pthread_mutex_unlock(args->mutex);
 
     }
     return NULL;
@@ -75,7 +73,7 @@ void start_threads(struct options opt)
     struct thread_info *threads;
     struct args *args;
     struct buffer buffer;
-    pthread_mutex_t mutex;
+    pthread_mutex_t *mutex;
 
     srand(time(NULL));
 
@@ -85,8 +83,10 @@ void start_threads(struct options opt)
     }
     buffer.size = opt.buffer_size;
 
-    for(i=0; i<buffer.size; i++)
+    for(i=0; i<buffer.size; i++){
+        pthread_mutex_init(&mutex[i],NULL);
         buffer.data[i]=i;
+    }
 
     printf("creating %d threads\n", opt.num_threads);
     threads = malloc(sizeof(struct thread_info) * opt.num_threads);
@@ -100,8 +100,6 @@ void start_threads(struct options opt)
     printf("Buffer before: ");
     print_buffer(buffer);
 
-    pthread_mutex_init(&mutex,NULL);
-
     // Create num_thread threads running swap()
     for (i = 0; i < opt.num_threads; i++) {
         threads[i].thread_num = i;
@@ -110,7 +108,8 @@ void start_threads(struct options opt)
         args[i].buffer     = &buffer;
         args[i].delay      = opt.delay;
         args[i].iterations = opt.iterations;
-        args[i].mutex      = &mutex;
+        args[i].mutex1      = mutex;
+        args[i].mutex2      = mutex;
 
         if ( 0 != pthread_create(&threads[i].thread_id, NULL,
                      swap, &args[i])) {
