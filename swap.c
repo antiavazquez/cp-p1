@@ -22,6 +22,7 @@ struct args {
     int				delay;			  // delay between operations
     int				iterations;
     struct buffer	*buffer;		  // Shared buffer
+    pthread_mutex_t *mutex;
 };
 
 void *swap(void *ptr)
@@ -32,6 +33,8 @@ void *swap(void *ptr)
         int i,j, tmp;
         i=rand() % args->buffer->size;
         j=rand() % args->buffer->size;
+
+        pthread_mutex_lock(args->mutex);
 
         printf("Thread %d swapping positions %d (== %d) and %d (== %d)\n",
             args->thread_num, i, args->buffer->data[i], j, args->buffer->data[j]);
@@ -45,6 +48,8 @@ void *swap(void *ptr)
         args->buffer->data[j] = tmp;
         if(args->delay) usleep(args->delay);
         inc_count();
+
+        pthread_mutex_unlock(args->mutex);
 
     }
     return NULL;
@@ -70,6 +75,7 @@ void start_threads(struct options opt)
     struct thread_info *threads;
     struct args *args;
     struct buffer buffer;
+    pthread_mutex_t mutex;
 
     srand(time(NULL));
 
@@ -94,6 +100,7 @@ void start_threads(struct options opt)
     printf("Buffer before: ");
     print_buffer(buffer);
 
+    pthread_mutex_init(&mutex,NULL);
 
     // Create num_thread threads running swap()
     for (i = 0; i < opt.num_threads; i++) {
@@ -103,6 +110,7 @@ void start_threads(struct options opt)
         args[i].buffer     = &buffer;
         args[i].delay      = opt.delay;
         args[i].iterations = opt.iterations;
+        args[i].mutex      = &mutex;
 
         if ( 0 != pthread_create(&threads[i].thread_id, NULL,
                      swap, &args[i])) {
@@ -112,8 +120,9 @@ void start_threads(struct options opt)
     }
 
     // Wait for the threads to finish
-    for (i = 0; i < opt.num_threads; i++)
+    for (i = 0; i < opt.num_threads; i++){
         pthread_join(threads[i].thread_id, NULL);
+    }
 
     // Print the buffer
     printf("Buffer after:  ");
@@ -121,6 +130,8 @@ void start_threads(struct options opt)
     print_buffer(buffer);
 
     printf("iterations: %d\n", get_count());
+
+    pthread_mutex_destroy(&mutex);
 
     free(args);
     free(threads);
