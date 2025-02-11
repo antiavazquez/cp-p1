@@ -22,8 +22,7 @@ struct args {
     int				delay;			  // delay between operations
     int				iterations;
     struct buffer	*buffer;		  // Shared buffer
-    pthread_mutex_t *mutex1;
-    pthread_mutex_t *mutex2;
+    pthread_mutex_t *mutex;
 };
 
 void *swap(void *ptr)
@@ -35,20 +34,31 @@ void *swap(void *ptr)
         i=rand() % args->buffer->size;
         j=rand() % args->buffer->size;
 
-        printf("Thread %d swapping positions %d (== %d) and %d (== %d)\n",
-            args->thread_num, i, args->buffer->data[i], j, args->buffer->data[j]);
+        while (1) {
 
-        tmp = args->buffer->data[i];
-        if(args->delay) usleep(args->delay); // Force a context switch
+            pthread_mutex_lock(&args->mutex[i]);
+            if (pthread_mutex_trylock(&args->mutex[j])) {
+                pthread_mutex_unlock(&args->mutex[i]);
+                continue;
+            }
 
-        args->buffer->data[i] = args->buffer->data[j];
-        if(args->delay) usleep(args->delay);
+            printf("Thread %d swapping positions %d (== %d) and %d (== %d)\n",
+                   args->thread_num, i, args->buffer->data[i], j, args->buffer->data[j]);
 
-        args->buffer->data[j] = tmp;
-        if(args->delay) usleep(args->delay);
-        inc_count();
+            tmp = args->buffer->data[i];
+            if (args->delay) usleep(args->delay); // Force a context switch
 
+            args->buffer->data[i] = args->buffer->data[j];
+            if (args->delay) usleep(args->delay);
 
+            args->buffer->data[j] = tmp;
+            if (args->delay) usleep(args->delay);
+            inc_count();
+
+            pthread_mutex_unlock(&args->mutex[i]);
+            pthread_mutex_unlock(&args->mutex[j]);
+            break;
+        }
     }
     return NULL;
 }
@@ -73,7 +83,7 @@ void start_threads(struct options opt)
     struct thread_info *threads;
     struct args *args;
     struct buffer buffer;
-    pthread_mutex_t *mutex;
+    pthread_mutex_t mutex[opt.buffer_size];
 
     srand(time(NULL));
 
@@ -108,8 +118,7 @@ void start_threads(struct options opt)
         args[i].buffer     = &buffer;
         args[i].delay      = opt.delay;
         args[i].iterations = opt.iterations;
-        args[i].mutex1      = mutex;
-        args[i].mutex2      = mutex;
+        args[i].mutex      = mutex;
 
         if ( 0 != pthread_create(&threads[i].thread_id, NULL,
                      swap, &args[i])) {
@@ -130,7 +139,7 @@ void start_threads(struct options opt)
 
     printf("iterations: %d\n", get_count());
 
-    pthread_mutex_destroy(&mutex);
+    pthread_mutex_destroy(mutex);
 
     free(args);
     free(threads);
