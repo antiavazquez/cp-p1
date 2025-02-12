@@ -23,6 +23,7 @@ struct args {
     int				iterations;
     struct buffer	*buffer;		  // Shared buffer
     pthread_mutex_t *mutex;
+    int print_wait;
 };
 
 void *swap(void *ptr)
@@ -82,6 +83,15 @@ void print_buffer(struct buffer buffer) {
     printf("\n");
 }
 
+void* print_periodically(void* ptr){
+    struct args *args = ptr;
+
+    while (1){      // cambiar a un booleano que sea falso cuando acaben los threads
+        print_buffer(*args->buffer);
+        usleep(args->print_wait);
+    }
+}
+
 void start_threads(struct options opt)
 {
     int i;
@@ -126,12 +136,19 @@ void start_threads(struct options opt)
         args[i].delay      = opt.delay;
         args[i].iterations = opt.iterations;
         args[i].mutex      = mutex;
+        args[i].print_wait = 0;
 
         if ( 0 != pthread_create(&threads[i].thread_id, NULL,
                      swap, &args[i])) {
             printf("Could not create thread #%d", i);
             exit(1);
         }
+    }
+
+    if ( 0 != pthread_create(&threads[i].thread_id, NULL,
+                             print_periodically, &args[i])) {
+        printf("Could not create thread #%d", i);
+        exit(1);
     }
 
     // Wait for the threads to finish
