@@ -34,10 +34,15 @@ void *swap(void *ptr)
         i=rand() % args->buffer->size;
         j=rand() % args->buffer->size;
 
+        if (i==j){
+            inc_count();
+            continue;
+        }
+
         while (1) {
 
             pthread_mutex_lock(&args->mutex[i]);
-            if (pthread_mutex_trylock(&args->mutex[j])) {
+            if (pthread_mutex_trylock(&args->mutex[j])) { //If locking m2 fails, free m1
                 pthread_mutex_unlock(&args->mutex[i]);
                 continue;
             }
@@ -83,7 +88,7 @@ void start_threads(struct options opt)
     struct thread_info *threads;
     struct args *args;
     struct buffer buffer;
-    pthread_mutex_t mutex[opt.buffer_size];
+    pthread_mutex_t *mutex;
 
     srand(time(NULL));
 
@@ -92,6 +97,8 @@ void start_threads(struct options opt)
         exit(1);
     }
     buffer.size = opt.buffer_size;
+
+    mutex= malloc(sizeof(pthread_mutex_t)* opt.buffer_size);
 
     for(i=0; i<buffer.size; i++){
         pthread_mutex_init(&mutex[i],NULL);
