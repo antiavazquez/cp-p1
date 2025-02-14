@@ -191,6 +191,7 @@ void start_threads(struct options opt)
     for (i = 0; i < opt.buffer_size; i++) {
         pthread_mutex_destroy(&mutex[i]);
     }
+
     free(mutex);
     free(print_args->print_check);
     free(print_thread);
