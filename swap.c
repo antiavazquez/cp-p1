@@ -20,7 +20,7 @@ struct thread_info {
 struct args {
     int				thread_num;       // application defined thread #
     int				delay;			  // delay between operations
-    int				iterations;
+    int				*iterations;
     struct buffer	*buffer;		  // Shared buffer
     pthread_mutex_t *mutex;
 };
@@ -36,7 +36,7 @@ void *swap(void *ptr)
 {
     struct args *args =  ptr;
 
-    while(args->iterations--) {
+    while(*args->iterations--) {
         int i,j, tmp;
         i=rand() % args->buffer->size;
         j=rand() % args->buffer->size;
@@ -105,6 +105,7 @@ void start_threads(struct options opt)
     struct args *args;
     struct buffer buffer;
     pthread_mutex_t *mutex;
+    int *global_iterations;
 
     struct thread_info *print_thread;
     struct print_args *print_args;
@@ -123,6 +124,14 @@ void start_threads(struct options opt)
         pthread_mutex_init(&mutex[i],NULL);
         buffer.data[i]=i;
     }
+
+    global_iterations = malloc(sizeof (int));
+    if (global_iterations == NULL) {
+        printf("Memory allocation failed for global iterations pointer\n");
+        exit(1);
+    }
+
+    *global_iterations = opt.iterations;
 
     printf("creating %d threads\n", opt.num_threads);
     threads = malloc(sizeof(struct thread_info) * opt.num_threads);
@@ -162,7 +171,7 @@ void start_threads(struct options opt)
         args[i].thread_num = i;
         args[i].buffer     = &buffer;
         args[i].delay      = opt.delay;
-        args[i].iterations = opt.iterations;
+        args[i].iterations = global_iterations;
         args[i].mutex      = mutex;
 
         if ( 0 != pthread_create(&threads[i].thread_id, NULL,
@@ -191,6 +200,9 @@ void start_threads(struct options opt)
     for (i = 0; i < opt.buffer_size; i++) {
         pthread_mutex_destroy(&mutex[i]);
     }
+    //for (i = 0; i < opt.num_threads; i++) {
+    //    free(args[i].iterations);
+    //}
     free(mutex);
     free(print_args->print_check);
     free(print_thread);
@@ -210,7 +222,7 @@ int main (int argc, char **argv)
     opt.buffer_size = 10;
     opt.iterations  = 100;
     opt.delay       = 10;
-    opt.print_wait  = 10;
+    opt.print_wait  = 100;
 
     read_options(argc, argv, &opt);
 
