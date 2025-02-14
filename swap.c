@@ -150,13 +150,13 @@ void start_threads(struct options opt)
     *print_args->print_check = 1;
 
     if ( 0 != pthread_create(&print_thread->thread_id, NULL,
-                             print_periodically, &print_args)) {
+                             print_periodically, print_args)) {
         printf("Could not create thread #%d", i);
         exit(1);
     }
 
     // Create num_thread threads running swap()
-    for (i = 0; i <= opt.num_threads; i++) {
+    for (i = 0; i < opt.num_threads; i++) {
         threads[i].thread_num = i;
 
         args[i].thread_num = i;
