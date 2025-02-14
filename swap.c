@@ -91,7 +91,7 @@ void print_buffer(struct buffer buffer) {
 
 void* print_periodically(void* ptr){
     struct print_args *args = ptr;
-    while (args->print_check){
+    while (*args->print_check){
         print_buffer(*args->buffer);
         usleep(args->print_wait);
     }
@@ -142,6 +142,11 @@ void start_threads(struct options opt)
     print_args->thread_num  = 0;
     print_args->buffer      = &buffer;
     print_args->print_wait  = opt.print_wait;
+    print_args->print_check = malloc(sizeof(int));
+    if (print_args->print_check == NULL) {
+        printf("Memory allocation failed for print_check\n");
+        exit(1);
+    }
     *print_args->print_check = 1;
 
     if ( 0 != pthread_create(&print_thread->thread_id, NULL,
@@ -151,7 +156,7 @@ void start_threads(struct options opt)
     }
 
     // Create num_thread threads running swap()
-    for (i = 1; i <= opt.num_threads; i++) {
+    for (i = 0; i <= opt.num_threads; i++) {
         threads[i].thread_num = i;
 
         args[i].thread_num = i;
@@ -183,8 +188,11 @@ void start_threads(struct options opt)
 
     printf("iterations: %d\n", get_count());
 
-    pthread_mutex_destroy(mutex);
-
+    for (i = 0; i < opt.buffer_size; i++) {
+        pthread_mutex_destroy(&mutex[i]);
+    }
+    free(mutex);
+    free(print_args->print_check);
     free(args);
     free(threads);
     free(buffer.data);
@@ -201,6 +209,7 @@ int main (int argc, char **argv)
     opt.buffer_size = 10;
     opt.iterations  = 100;
     opt.delay       = 10;
+    opt.print_wait  = 10;
 
     read_options(argc, argv, &opt);
 
