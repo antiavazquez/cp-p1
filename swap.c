@@ -193,10 +193,11 @@ void start_threads(struct options opt)
     }
     free(mutex);
     free(print_args->print_check);
+    free(print_thread);
+    free(print_args);
     free(args);
     free(threads);
     free(buffer.data);
-
     pthread_exit(NULL);
 }
 
