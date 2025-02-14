@@ -146,7 +146,9 @@ void start_threads(struct options opt)
 
     printf("iterations: %d\n", get_count());
 
-    pthread_mutex_destroy(mutex);
+    for (i = 0; i < opt.buffer_size; i++) {
+        pthread_mutex_destroy(&mutex[i]);
+    }
 
     free(args);
     free(threads);
