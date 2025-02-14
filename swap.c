@@ -35,8 +35,7 @@ struct print_args {
 void *swap(void *ptr)
 {
     struct args *args =  ptr;
-
-    while(*args->iterations--) {
+    while((*args->iterations)>0) {
         int i,j, tmp;
         i=rand() % args->buffer->size;
         j=rand() % args->buffer->size;
@@ -69,6 +68,7 @@ void *swap(void *ptr)
 
             pthread_mutex_unlock(&args->mutex[i]);
             pthread_mutex_unlock(&args->mutex[j]);
+            (*args->iterations)--;
             break;
         }
     }
@@ -130,8 +130,8 @@ void start_threads(struct options opt)
         printf("Memory allocation failed for global iterations pointer\n");
         exit(1);
     }
-
-    *global_iterations = opt.iterations;
+    int x = opt.iterations;
+    *global_iterations = x;
 
     printf("creating %d threads\n", opt.num_threads);
     threads = malloc(sizeof(struct thread_info) * opt.num_threads);
@@ -164,25 +164,29 @@ void start_threads(struct options opt)
         exit(1);
     }
 
+    int created_threads=0;
+
     // Create num_thread threads running swap()
     for (i = 0; i < opt.num_threads; i++) {
+        if(global_iterations<=0){
+            break;
+        }
         threads[i].thread_num = i;
-
         args[i].thread_num = i;
         args[i].buffer     = &buffer;
         args[i].delay      = opt.delay;
         args[i].iterations = global_iterations;
         args[i].mutex      = mutex;
-
         if ( 0 != pthread_create(&threads[i].thread_id, NULL,
                      swap, &args[i])) {
             printf("Could not create thread #%d", i);
             exit(1);
         }
+        created_threads++;
     }
 
     // Wait for the threads to finish
-    for (i = 0; i < opt.num_threads; i++){
+    for (i = 0; i < created_threads; i++){
         pthread_join(threads[i].thread_id, NULL);
     }
 
