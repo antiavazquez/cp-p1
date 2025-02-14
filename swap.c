@@ -26,7 +26,6 @@ struct args {
 };
 
 struct print_args {
-    int				thread_num;
     struct buffer	*buffer;
     int             print_wait;
     int             *print_check;
@@ -139,7 +138,6 @@ void start_threads(struct options opt)
     print_buffer(buffer);
 
     print_thread->thread_num= 0;
-    print_args->thread_num  = 0;
     print_args->buffer      = &buffer;
     print_args->print_wait  = opt.print_wait;
     print_args->print_check = malloc(sizeof(int));
