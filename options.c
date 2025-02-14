@@ -61,7 +61,7 @@ int handle_options(int argc, char **argv, struct options *opt)
         int c;
         int option_index = 0;
 
-        c = getopt_long (argc, argv, "ht:b:i:d:",
+        c = getopt_long (argc, argv, "ht:b:i:d:p:",
                  long_options, &option_index);
         if (c == -1)
             break;
