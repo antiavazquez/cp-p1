@@ -23,6 +23,7 @@ struct args {
     int				*iterations;
     struct buffer	*buffer;		  // Shared buffer
     pthread_mutex_t *mutex;
+    pthread_mutex_t *i_mutex;
 };
 
 struct print_args {
@@ -35,12 +36,22 @@ struct print_args {
 void *swap(void *ptr)
 {
     struct args *args =  ptr;
-    while((*args->iterations)>0) {
+    while (1) {
+
+        pthread_mutex_lock(args->i_mutex);
+        if ((*args->iterations) <= 0) {
+            pthread_mutex_unlock(args->i_mutex);
+            break;
+        }
+        (*args->iterations)--;
+        pthread_mutex_unlock(args->i_mutex);
+
         int i,j, tmp;
         i=rand() % args->buffer->size;
         j=rand() % args->buffer->size;
 
         if (i==j){
+            printf("Redundant swap\n");
             inc_count();
             continue;
         }
@@ -68,7 +79,7 @@ void *swap(void *ptr)
 
             pthread_mutex_unlock(&args->mutex[i]);
             pthread_mutex_unlock(&args->mutex[j]);
-            (*args->iterations)--;
+
             break;
         }
     }
@@ -106,6 +117,7 @@ void start_threads(struct options opt)
     struct buffer buffer;
     pthread_mutex_t *mutex;
     int *global_iterations;
+    pthread_mutex_t i_mutex;
 
     struct thread_info *print_thread;
     struct print_args *print_args;
@@ -119,11 +131,17 @@ void start_threads(struct options opt)
     buffer.size = opt.buffer_size;
 
     mutex= malloc(sizeof(pthread_mutex_t)* opt.buffer_size);
+    if (mutex==NULL){
+        printf("Out of memory\n");
+        exit(1);
+    }
 
     for(i=0; i<buffer.size; i++){
         pthread_mutex_init(&mutex[i],NULL);
         buffer.data[i]=i;
     }
+
+    pthread_mutex_init(&i_mutex,NULL);
 
     global_iterations = malloc(sizeof (int));
     if (global_iterations == NULL) {
@@ -168,15 +186,13 @@ void start_threads(struct options opt)
 
     // Create num_thread threads running swap()
     for (i = 0; i < opt.num_threads; i++) {
-        if(global_iterations<=0){
-            break;
-        }
         threads[i].thread_num = i;
         args[i].thread_num = i;
         args[i].buffer     = &buffer;
         args[i].delay      = opt.delay;
         args[i].iterations = global_iterations;
         args[i].mutex      = mutex;
+        args[i].i_mutex = &i_mutex;
         if ( 0 != pthread_create(&threads[i].thread_id, NULL,
                      swap, &args[i])) {
             printf("Could not create thread #%d", i);
@@ -204,9 +220,9 @@ void start_threads(struct options opt)
     for (i = 0; i < opt.buffer_size; i++) {
         pthread_mutex_destroy(&mutex[i]);
     }
-    //for (i = 0; i < opt.num_threads; i++) {
-    //    free(args[i].iterations);
-    //}
+    pthread_mutex_destroy(&i_mutex);
+
+    free(global_iterations);
     free(mutex);
     free(print_args->print_check);
     free(print_thread);
