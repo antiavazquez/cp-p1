@@ -150,6 +150,7 @@ void start_threads(struct options opt)
         pthread_mutex_destroy(&mutex[i]);
     }
 
+    free(mutex);
     free(args);
     free(threads);
     free(buffer.data);
